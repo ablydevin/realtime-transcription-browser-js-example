@@ -9,8 +9,16 @@ let isRecording = false;
 let socket;
 let recorder;
 
+//create an ably client
+
 // runs real-time transcription and handles global variables
 const run = async () => {
+  const client = new Ably.Realtime.Promise({ authUrl:'http://localhost:8000/auth' });
+  await client.connection.once('connected');
+  console.log('Connected to Ably!');
+
+const channel = client.channels.get('closed-captions');
+
   if (isRecording) {
     if (socket) {
       socket.send(JSON.stringify({ terminate_session: true }));
@@ -41,7 +49,11 @@ const run = async () => {
     const texts = {};
     socket.onmessage = (message) => {
       let msg = "";
+
+      channel.publish('cc-snippet', message.data);
+
       const res = JSON.parse(message.data);
+
       texts[res.audio_start] = res.text;
       const keys = Object.keys(texts);
       keys.sort((a, b) => a - b);
